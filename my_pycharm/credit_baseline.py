@@ -5,7 +5,8 @@
 import warnings
 
 import pandas as pd
-
+import  matplotlib.pyplot as plt
+import  seaborn as  sns
 warnings.filterwarnings('ignore')
 
 train_bank = pd.read_csv('../train_dataset/train_public.csv')
@@ -14,6 +15,14 @@ test = pd.read_csv('../train_dataset/test_public.csv')
 # ### 数据预处理
 
 # In[3]:
+bank_columns=list(train_bank.columns.values)
+print(bank_columns)
+## todo  变量分析-- 单变量分析
+
+print(train_bank['total_loan'].describe())
+print(train_bank['total_loan'].value_counts())
+sns.scatterplot(train_bank['total_loan'],color='g',bins=100,hist_kws={'alpha':0.4})
+plt.show()
 
 
 common_cols = []
@@ -165,20 +174,20 @@ y_train2 = train2_data['isDefault']
 X_train = pd.concat([X_train1, X_train2])
 y_train = pd.concat([y_train1, y_train2])
 
-X_test = test_data.drop(['earlies_credit_mon', 'loan_id', 'user_id'], axis=1, inplace=False)
-
-# 利用Internet数据预训练模型11
-clf_ex = lightgbm.LGBMRegressor(n_estimators=200)
-clf_ex.fit(X=X_train, y=y_train)
-clf_ex.booster_.save_model('LGBMmode.txt')
-pred = clf_ex.predict(X_test)
-
-# In[17]:
-
-pred[pred>0]=1
-pred[pred<0]=0
-# submission
-submission = pd.DataFrame({'id': test['loan_id'], 'isDefault':pred})
-submission.to_csv('submission.csv', index=None)
-
+# X_test = test_data.drop(['earlies_credit_mon', 'loan_id', 'user_id'], axis=1, inplace=False)
+#
+# # 利用Internet数据预训练模型11
+# clf_ex = lightgbm.LGBMRegressor(n_estimators=200)
+# clf_ex.fit(X=X_train, y=y_train)
+# clf_ex.booster_.save_model('LGBMmode.txt')
+# pred = clf_ex.predict(X_test)
+#
+# # In[17]:
+#
+# pred[pred>0]=1
+# pred[pred<0]=0
+# # submission
+# submission = pd.DataFrame({'id': test['loan_id'], 'isDefault':pred})
+# submission.to_csv('submission.csv', index=None)
+#
 # #### NN
