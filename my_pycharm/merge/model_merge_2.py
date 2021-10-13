@@ -1,9 +1,16 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-#File    : baseline_89.py
+#File    : model_merge_2.py
 #Author  : ganguohua
-#Time    : 2021/10/13 4:15 下午
+#Time    : 2021/10/13 8:14 下午
+"""
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+"""
+#File    : baseline_89_2.py
+#Author  : ganguohua
+#Time    : 2021/10/13 4:28 下午
 """
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -21,10 +28,10 @@ import gc
 from sklearn.model_selection import StratifiedKFold
 from dateutil.relativedelta import relativedelta
 
-train_data = pd.read_csv('../train_dataset/train_public.csv')
-submit_example = pd.read_csv('../train_dataset/submit_example.csv')
-test_public = pd.read_csv('../train_dataset/test_public.csv')
-train_inte = pd.read_csv('../train_dataset/train_internet1.csv')
+train_data = pd.read_csv('../nw_train_public.csv')
+submit_example = pd.read_csv('../../train_dataset/submit_example.csv')
+test_public = pd.read_csv('../../train_dataset/test_public.csv')
+train_inte = pd.read_csv('../../train_dataset/train_internet1.csv')
 
 pd.set_option('max_columns', None)
 pd.set_option('max_rows', 200)
@@ -178,6 +185,7 @@ test_public = test_public.drop(col_to_drop, axis=1)
 
 ##internet处理
 train_inte = train_inte.drop(col_to_drop, axis=1)
+print(len(train_data),train_data.columns.values)
 # 暂时不变
 # train_inte = train_inte.rename(columns={'is_default':'isDefault'})
 # data = pd.concat( [train_data,test_public] )
@@ -189,30 +197,45 @@ Inte_add_cos = list(tr_cols.difference(set(same_col)))
 for col in Inte_add_cos:
     train_inteSame[col] = np.nan
 
-# 81后加
-# for col in cat_cols:
-#     dum = pd.get_dummies(data[col], prefix='OneHot_'+col +'_')
-#     data = pd.concat([data, dum], axis=1)
-# #     del data[col]
-#     del dum
 
 y = train_data['isDefault']
-folds = KFold(n_splits=5, shuffle=True, random_state=546789)
-oof_preds, IntePre, importances = train_model(train_data, train_inteSame, y, folds)
+# folds = KFold(n_splits=5, shuffle=True, random_state=546789)
+# oof_preds, IntePre, importances = train_model(train_data, train_inteSame, y, folds)
+#  使用不同的模型然后进行融合
 
-IntePre['isDef'] = train_inte['isDefault']
-from sklearn.metrics import roc_auc_score
 
-roc_auc_score(IntePre['isDef'], IntePre.isDefault)
-## 选择阈值0.05，从internet表中提取预测小于该概率的样本，并对不同来源的样本赋予来源值
-InteId = IntePre.loc[IntePre.isDefault < 0.05, 'loan_id'].tolist()
+print(len(train_inteSame.columns.values),train_data.columns.values)
+print(len(train_inteSame.columns.values),train_inteSame.columns.values)
+##  目前 train_data中的字段和train_inteSame 中的字段是一样的
+##  默认 lightgbm 会使用中值填充空值
+##  添加过滤某些字段的操作
+## df.isnull().any()
+feats = [f for f in train_data.columns if f not in ['known_outstanding_loan', 'known_dero', 'app_type','loan_id', 'user_id', 'isDefault']]
+## todo  进行优化进行中值填充的方法
 
-train_data['dataSourse'] = 1
-test_public['dataSourse'] = 1
-train_inteSame['dataSourse'] = 0
-train_inteSame['isDefault'] = train_inte['isDefault']
-use_te = train_inteSame[train_inteSame.loan_id.isin(InteId)].copy()
-data = pd.concat([train_data, test_public, use_te]).reset_index(drop=True)
+for i in feats:
+    train_data[i]  =  train_data[i].fillna(value=train_data[i].mean())
+    train_inteSame[i]=train_inteSame[i].fillna(value=train_inteSame[i].mean())
+# null_list=['known_outstanding_loan', 'known_dero', 'app_type']
+# train_inteSame[null_list]=train_inteSame[null_list].fillna(value=0)
+print(len(set(train_data.columns.values)&set(train_inteSame.columns.values)))
+print(train_data[feats].isnull().any())
+## 使用随机森林 进行数据的预测
+
+from sklearn.ensemble import  RandomForestClassifier
+rf=RandomForestClassifier(max_features='auto',oob_score=True,random_state=1,n_jobs=-1)
+rf.fit(X=train_data[feats],y=y)
+ans1=rf.predict(train_inteSame[feats])
+print(roc_auc_score(train_inteSame['isDefault'],ans1))
+## 使用xgboost 进行数据的预测
+import  xgboost as xgb
+params={'eta':0.01 ,'max_depth':11,'objective':'reg:liner','eval_metric':'rmse'}
+dtrain=xgb.DMatrix(data=train_data[feats],label=y)
+dtest=xgb.DMatrix(data=train_inteSame[feats],label=train_inteSame['isDefault'])
+
+
+
+
 
 # InteId = IntePre.loc[IntePre.isDefault<0.05, 'loan_id'].tolist()
 # train_inte = train_inte.rename(columns={'is_default':'isDefault'})
@@ -226,32 +249,19 @@ data = pd.concat([train_data, test_public, use_te]).reset_index(drop=True)
 # data = pd.concat([ train_data,test_public,use_te]).reset_index(drop=True)
 
 # IntePre.isDefault
-plt.figure(figsize=(16, 6))
-plt.title("Distribution of Default values IntePre")
-sns.distplot(IntePre['isDefault'], color="black", kde=True, bins=120, label='train_data')
-# sns.distplot(train_inte[col],color="red", kde=True,bins=120, label='train_inte')
-plt.legend()
-plt.show()
-train = data[data['isDefault'].notna()]
-test = data[data['isDefault'].isna()]
-# for col in ['sub_class', 'work_type']:
-#     del train[col]
-#     del test[col]111
-
-
-del data
-del train_data, test_public
-
-y = train['isDefault']
-folds = KFold(n_splits=5, shuffle=True, random_state=546789)
-oof_preds, test_preds, importances = train_model(train, test, y, folds)
-test_preds.rename({'loan_id': 'id'}, axis=1)[['id', 'isDefault']].to_csv('nn2.csv', index=False)
-import pandas as pd
-train_data = pd.read_csv('../train_dataset/train_public.csv')
-test_data = pd.read_csv('../train_dataset/test_public.csv')
-sub=pd.read_csv("nn2.csv")
-sub=sub.rename(columns={'id': 'loan_id'})
-sub.loc[sub['isDefault']<0.5,'isDefault'] = 0
-nw_sub=sub[(sub['isDefault']==0)]
-nw_test_data=test_data.merge(nw_sub,on='loan_id',how='inner')
-nw_train_data = pd.concat([train_data,nw_test_data]).reset_index(drop=True)
+# plt.figure(figsize=(16, 6))
+# plt.title("Distribution of Default values IntePre")
+# sns.distplot(IntePre['isDefault'], color="black", kde=True, bins=120, label='train_data')
+# # sns.distplot(train_inte[col],color="red", kde=True,bins=120, label='train_inte')
+# plt.legend();
+# plt.show()
+# train = data[data['isDefault'].notna()]
+# test = data[data['isDefault'].isna()]
+#
+# del data
+# del train_data, test_public
+#
+# y = train['isDefault']
+# folds = KFold(n_splits=5, shuffle=True, random_state=546789)
+# oof_preds, test_preds, importances = train_model(train, test, y, folds)
+# test_preds.rename({'loan_id': 'id'}, axis=1)[['id', 'isDefault']].to_csv('baseline891.csv', index=False)

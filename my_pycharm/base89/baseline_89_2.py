@@ -21,10 +21,10 @@ import gc
 from sklearn.model_selection import StratifiedKFold
 from dateutil.relativedelta import relativedelta
 
-train_data = pd.read_csv('./nw_train_public.csv')
-submit_example = pd.read_csv('../train_dataset/submit_example.csv')
-test_public = pd.read_csv('../train_dataset/test_public.csv')
-train_inte = pd.read_csv('../train_dataset/train_internet1.csv')
+train_data = pd.read_csv('../nw_train_public.csv')
+submit_example = pd.read_csv('../../train_dataset/submit_example.csv')
+test_public = pd.read_csv('../../train_dataset/test_public.csv')
+train_inte = pd.read_csv('../../train_dataset/train_internet1.csv')
 
 pd.set_option('max_columns', None)
 pd.set_option('max_rows', 200)
