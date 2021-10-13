@@ -9,7 +9,7 @@ import pandas as pd
 warnings.filterwarnings('ignore')
 
 train_bank = pd.read_csv('../train_dataset/train_public.csv')
-train_internet = pd.read_csv('../train_dataset/train_internet.csv')
+train_internet = pd.read_csv('../train_dataset/train_internet1.csv')
 test = pd.read_csv('../train_dataset/test_public.csv')
 # ### 数据预处理
 
@@ -27,8 +27,8 @@ len(common_cols)
 # In[4]:
 
 
-print(len(train_bank.columns))
-print(len(train_internet.columns))
+# print(len(train_bank.columns))
+# print(len(train_internet.columns))
 
 # In[5]:
 
@@ -156,11 +156,11 @@ test_data['industry'] = test_data['industry'].map(industry_dict)
 
 import lightgbm
 
-X_train1 = train1_data.drop(['is_default', 'earlies_credit_mon', 'loan_id', 'user_id'], axis=1, inplace=False)
-y_train1 = train1_data['is_default']
+X_train1 = train1_data.drop(['isDefault', 'earlies_credit_mon', 'loan_id', 'user_id'], axis=1, inplace=False)
+y_train1 = train1_data['isDefault']
 
-X_train2 = train2_data.drop(['is_default', 'earlies_credit_mon', 'loan_id', 'user_id'], axis=1, inplace=False)
-y_train2 = train2_data['is_default']
+X_train2 = train2_data.drop(['isDefault', 'earlies_credit_mon', 'loan_id', 'user_id'], axis=1, inplace=False)
+y_train2 = train2_data['isDefault']
 
 X_train = pd.concat([X_train1, X_train2])
 y_train = pd.concat([y_train1, y_train2])
@@ -175,9 +175,10 @@ pred = clf_ex.predict(X_test)
 
 # In[17]:
 
-
+pred[pred>0]=1
+pred[pred<0]=0
 # submission
-submission = pd.DataFrame({'id': test['loan_id'], 'is_default': (1 if pred > 0 else 0)})
+submission = pd.DataFrame({'id': test['loan_id'], 'isDefault':pred})
 submission.to_csv('submission.csv', index=None)
 
 # #### NN
