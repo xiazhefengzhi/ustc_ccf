@@ -228,14 +228,19 @@ rf.fit(X=train_data[feats],y=y)
 ans1=rf.predict(train_inteSame[feats])
 print(roc_auc_score(train_inteSame['isDefault'],ans1))
 ## 使用xgboost 进行数据的预测
+# 先进行数据集的拆分，然后进行数据的拟合操作
 import  xgboost as xgb
-params={'eta':0.01 ,'max_depth':11,'objective':'reg:liner','eval_metric':'rmse'}
-dtrain=xgb.DMatrix(data=train_data[feats],label=y)
-dtest=xgb.DMatrix(data=train_inteSame[feats],label=train_inteSame['isDefault'])
+from  sklearn.model_selection  import  train_test_split
+params={'eta':0.01 ,'max_depth':11,'objective':'binary:logistic','eval_metric':'auc'}
+X_trainval,X_test,y_trainval,y_test =train_test_split(train_data[feats], y, test_size=0.2, random_state=9527)
 
+dtrain=xgb.DMatrix(data=X_trainval,label=y_trainval)
+dtest=xgb.DMatrix(data=X_test,label=y_test)
+watch_list=[(dtrain,'train'),(dtest,'valid')]
+model=xgb.train(params,dtrain,num_boost_round=20000,evals=watch_list,early_stopping_rounds=200,verbose_eval=500)
+ans2=model.predict(xgb.DMatrix(train_inteSame[feats]),ntree_limit=model.best_ntree_limit)
 
-
-
+print(roc_auc_score(train_inteSame['isDefault'],ans2))
 
 # InteId = IntePre.loc[IntePre.isDefault<0.05, 'loan_id'].tolist()
 # train_inte = train_inte.rename(columns={'is_default':'isDefault'})
