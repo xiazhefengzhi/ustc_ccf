@@ -5,28 +5,22 @@
 #Author  : ganguohua
 #Time    : 2021/10/13 8:14 下午
 """
-#!/usr/bin/python3
+# !/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 #File    : baseline_89_2.py
 #Author  : ganguohua
 #Time    : 2021/10/13 4:28 下午
 """
-import matplotlib.pyplot as plt
-import seaborn as sns
 import gc
 import re
-import pandas as pd
-import lightgbm as lgb
-import numpy as np
-from sklearn.metrics import roc_auc_score, precision_recall_curve, roc_curve, average_precision_score
-from sklearn.model_selection import KFold
-from lightgbm import LGBMClassifier
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
-import gc
-from sklearn.model_selection import StratifiedKFold
-from dateutil.relativedelta import relativedelta
+from lightgbm import LGBMClassifier
+from sklearn.metrics import roc_auc_score
 
 train_data = pd.read_csv('../nw_train_public.csv')
 submit_example = pd.read_csv('../../train_dataset/submit_example.csv')
@@ -185,7 +179,7 @@ test_public = test_public.drop(col_to_drop, axis=1)
 
 ##internet处理
 train_inte = train_inte.drop(col_to_drop, axis=1)
-print(len(train_data),train_data.columns.values)
+print(len(train_data), train_data.columns.values)
 # 暂时不变
 # train_inte = train_inte.rename(columns={'is_default':'isDefault'})
 # data = pd.concat( [train_data,test_public] )
@@ -197,50 +191,77 @@ Inte_add_cos = list(tr_cols.difference(set(same_col)))
 for col in Inte_add_cos:
     train_inteSame[col] = np.nan
 
-
 y = train_data['isDefault']
 # folds = KFold(n_splits=5, shuffle=True, random_state=546789)
 # oof_preds, IntePre, importances = train_model(train_data, train_inteSame, y, folds)
 #  使用不同的模型然后进行融合
 
 
-print(len(train_inteSame.columns.values),train_data.columns.values)
-print(len(train_inteSame.columns.values),train_inteSame.columns.values)
+print(len(train_inteSame.columns.values), train_data.columns.values)
+print(len(train_inteSame.columns.values), train_inteSame.columns.values)
 ##  目前 train_data中的字段和train_inteSame 中的字段是一样的
 ##  默认 lightgbm 会使用中值填充空值
 ##  添加过滤某些字段的操作
 ## df.isnull().any()
-feats = [f for f in train_data.columns if f not in ['known_outstanding_loan', 'known_dero', 'app_type','loan_id', 'user_id', 'isDefault']]
+feats = [f for f in train_data.columns if
+         f not in ['known_outstanding_loan', 'known_dero', 'app_type', 'loan_id', 'user_id', 'isDefault']]
 ## todo  进行优化进行中值填充的方法
 
 for i in feats:
-    train_data[i]  =  train_data[i].fillna(value=train_data[i].mean())
-    train_inteSame[i]=train_inteSame[i].fillna(value=train_inteSame[i].mean())
+    train_data[i] = train_data[i].fillna(value=train_data[i].mean())
+    train_inteSame[i] = train_inteSame[i].fillna(value=train_inteSame[i].mean())
 # null_list=['known_outstanding_loan', 'known_dero', 'app_type']
 # train_inteSame[null_list]=train_inteSame[null_list].fillna(value=0)
-print(len(set(train_data.columns.values)&set(train_inteSame.columns.values)))
+print(len(set(train_data.columns.values) & set(train_inteSame.columns.values)))
 print(train_data[feats].isnull().any())
 ## 使用随机森林 进行数据的预测
 
-from sklearn.ensemble import  RandomForestClassifier
-rf=RandomForestClassifier(max_features='auto',oob_score=True,random_state=1,n_jobs=-1)
-rf.fit(X=train_data[feats],y=y)
-ans1=rf.predict(train_inteSame[feats])
-print(roc_auc_score(train_inteSame['isDefault'],ans1))
+from sklearn.ensemble import RandomForestClassifier
+
+rf = RandomForestClassifier(max_features='auto', oob_score=True, random_state=1, n_jobs=-1)
+rf.fit(X=train_data[feats], y=y)
+ans1 = rf.predict(train_inteSame[feats])
+print(roc_auc_score(train_inteSame['isDefault'], ans1))
 ## 使用xgboost 进行数据的预测
 # 先进行数据集的拆分，然后进行数据的拟合操作
-import  xgboost as xgb
-from  sklearn.model_selection  import  train_test_split
-params={'eta':0.01 ,'max_depth':11,'objective':'binary:logistic','eval_metric':'auc'}
-X_trainval,X_test,y_trainval,y_test =train_test_split(train_data[feats], y, test_size=0.2, random_state=9527)
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
 
-dtrain=xgb.DMatrix(data=X_trainval,label=y_trainval)
-dtest=xgb.DMatrix(data=X_test,label=y_test)
-watch_list=[(dtrain,'train'),(dtest,'valid')]
-model=xgb.train(params,dtrain,num_boost_round=20000,evals=watch_list,early_stopping_rounds=200,verbose_eval=500)
-ans2=model.predict(xgb.DMatrix(train_inteSame[feats]),ntree_limit=model.best_ntree_limit)
+params = {'eta': 0.01, 'max_depth': 11, 'objective': 'binary:logistic', 'eval_metric': 'auc'}
+X_trainval, X_test, y_trainval, y_test = train_test_split(train_data[feats], y, test_size=0.21, random_state=9527)
 
-print(roc_auc_score(train_inteSame['isDefault'],ans2))
+dtrain = xgb.DMatrix(data=X_trainval, label=y_trainval)
+dtest = xgb.DMatrix(data=X_test, label=y_test)
+watch_list = [(dtrain, 'train'), (dtest, 'valid')]
+# model=xgb.train(params,dtrain,num_boost_round=20000,evals=watch_list,early_stopping_rounds=200,verbose_eval=500)
+# ans2=model.predict(xgb.DMatrix(train_inteSame[feats]),ntree_limit=model.best_ntree_limit)
+#
+# print(roc_auc_score(train_inteSame['isDefault'],ans2))
+
+
+my_clf = LGBMClassifier(
+    n_estimators=4000,
+    learning_rate=0.08,
+    num_leaves=2 ** 5,
+    colsample_bytree=.65,
+    subsample=.9,
+    max_depth=5,
+    #             max_bin=250,
+    reg_alpha=.3,
+    reg_lambda=.3,
+    min_split_gain=.01,
+    min_child_weight=2,
+    silent=-1,
+    verbose=-1,
+)
+
+my_clf.fit(X_trainval, y_trainval,
+           eval_set=[(X_trainval, y_trainval), (X_test, y_test)],
+           eval_metric='auc',
+           verbose=100, early_stopping_rounds=40)
+ans3 = my_clf.predict(train_inteSame[feats], num_iteration=my_clf.best_iteration_)
+print(roc_auc_score(train_inteSame['isDefault'], ans3))
+
 
 # InteId = IntePre.loc[IntePre.isDefault<0.05, 'loan_id'].tolist()
 # train_inte = train_inte.rename(columns={'is_default':'isDefault'})
