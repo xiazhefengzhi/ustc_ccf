@@ -9,4 +9,4 @@ import  pandas
 import pandas as pd
 
 table1=pd.read_csv("../nw_train_public.csv")
-print(table1)
+print(len(table1))

@@ -235,3 +235,5 @@ y.to_csv('my_y_train.csv', index=False)
 oof_preds, test_preds, importances = train_model(train, test, y, folds)
 
 test_preds.rename({'loan_id': 'id'}, axis=1)[['id', 'isDefault']].to_csv('baseline892.csv', index=False)
+
+np.savetxt("new.csv", oof_preds, delimiter=',')
