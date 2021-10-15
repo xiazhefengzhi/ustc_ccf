@@ -5,27 +5,20 @@
 #Author  : ganguohua
 #Time    : 2021/10/13 4:28 下午
 """
-import matplotlib.pyplot as plt
-import seaborn as sns
 import gc
 import re
-import pandas as pd
-import lightgbm as lgb
-import numpy as np
-from sklearn.metrics import roc_auc_score, precision_recall_curve, roc_curve, average_precision_score
-from sklearn.model_selection import KFold
-from lightgbm import LGBMClassifier
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
-import gc
-from sklearn.model_selection import StratifiedKFold
-from dateutil.relativedelta import relativedelta
-
-train_data = pd.read_csv('../nw_train_public.csv')
-submit_example = pd.read_csv('../../train_dataset/submit_example.csv')
-test_public = pd.read_csv('../../train_dataset/test_public.csv')
-train_inte = pd.read_csv('../../train_dataset/train_internet1.csv')
-
+from lightgbm import LGBMClassifier
+from sklearn.model_selection import KFold
+from sklearn.metrics import  roc_auc_score
+train_data = pd.read_csv("nw_train_public.csv")
+submit_example = pd.read_csv('../train_dataset/submit_example.csv')
+test_public = pd.read_csv('../train_dataset/test_public.csv')
+train_inte = pd.read_csv('../train_dataset/train_internet1.csv')
 pd.set_option('max_columns', None)
 pd.set_option('max_rows', 200)
 pd.set_option('float_format', lambda x: '%.3f' % x)
@@ -73,7 +66,7 @@ def train_model(data_, test_, y_, folds_):
         del clf, trn_x, trn_y, val_x, val_y
         gc.collect()
 
-    print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))
+    print('Full AUC score %.6f' % roc_auc_score(y_, oof_preds))
 
     test_['isDefault'] = sub_preds
 
@@ -176,7 +169,6 @@ col_to_drop = ['issue_date', 'earlies_credit_mon']
 train_data = train_data.drop(col_to_drop, axis=1)
 test_public = test_public.drop(col_to_drop, axis=1)
 
-##internet处理
 train_inte = train_inte.drop(col_to_drop, axis=1)
 # 暂时不变
 # train_inte = train_inte.rename(columns={'is_default':'isDefault'})
@@ -188,13 +180,6 @@ train_inteSame = train_inte[same_col].copy()
 Inte_add_cos = list(tr_cols.difference(set(same_col)))
 for col in Inte_add_cos:
     train_inteSame[col] = np.nan
-
-# 81后加
-# for col in cat_cols:
-#     dum = pd.get_dummies(data[col], prefix='OneHot_'+col +'_')
-#     data = pd.concat([data, dum], axis=1)
-# #     del data[col]
-#     del dum
 
 y = train_data['isDefault']
 folds = KFold(n_splits=5, shuffle=True, random_state=546789)
@@ -244,5 +229,9 @@ del train_data, test_public
 
 y = train['isDefault']
 folds = KFold(n_splits=5, shuffle=True, random_state=546789)
+train.to_csv('my_x_train.csv', index=False)
+test.to_csv('my_test.csv', index=False)
+y.to_csv('my_y_train.csv', index=False)
 oof_preds, test_preds, importances = train_model(train, test, y, folds)
-test_preds.rename({'loan_id': 'id'}, axis=1)[['id', 'isDefault']].to_csv('baseline891.csv', index=False)
+
+test_preds.rename({'loan_id': 'id'}, axis=1)[['id', 'isDefault']].to_csv('baseline892.csv', index=False)
