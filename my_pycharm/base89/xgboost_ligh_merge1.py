@@ -73,7 +73,7 @@ def train_predict(train_data, train_y, test, params):
     feats = [f for f in train_data.columns if f not in ['loan_id', 'user_id', 'isDefault']]
     oof_preds=np.zeros(train_data.shape[0])
     params = params_append(params)
-    kf = KFold(n_splits=5, random_state=2021, shuffle=True)
+    kf = KFold(n_splits=4, random_state=2021, shuffle=True)
     prediction_test = 0
     cv_score = []
 
