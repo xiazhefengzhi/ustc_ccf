@@ -73,8 +73,9 @@ def train_predict(train_data, train_y, test, params):
     feats = [f for f in train_data.columns if f not in ['loan_id', 'user_id', 'isDefault']]
     oof_preds=np.zeros(train_data.shape[0])
     params = params_append(params)
-    kf = KFold(n_splits=4, random_state=2021, shuffle=True)
-    prediction_test = 0
+    kf = KFold(n_splits=5, random_state=2021, shuffle=True)
+    prediction_test = np.zeros(test.shape[0])
+
     cv_score = []
 
     ESR = 30
@@ -82,8 +83,8 @@ def train_predict(train_data, train_y, test, params):
     VBE = 50
     test_data=xgb.DMatrix(test[feats])
     for train_part_index, eval_index in kf.split(train_data,train_y):
-        train_part = xgb.DMatrix(train_data[feats].iloc[train_part_index],train_y[train_part_index])
-        eval = xgb.DMatrix(train_data[feats].iloc[eval_index],train_y[eval_index])
+        train_part = xgb.DMatrix(train_data[feats].iloc[train_part_index],train_y.iloc[train_part_index])
+        eval = xgb.DMatrix(train_data[feats].iloc[eval_index],train_y.iloc[eval_index])
         '''
         def train(params, dtrain, num_boost_round=10, evals=(), obj=None, feval=None,
           maximize=None, early_stopping_rounds=None, evals_result=None,
@@ -93,7 +94,6 @@ def train_predict(train_data, train_y, test, params):
                         verbose_eval=VBE, maximize=False, early_stopping_rounds=ESR)
         prediction_test += bst.predict(test_data)
         oof_preds[eval_index] = bst.predict(eval)
-
         score = np.sqrt(roc_auc_score(train_y.iloc[eval_index].values,  oof_preds[eval_index]))
         cv_score.append(score)
     print(cv_score, sum(cv_score) / 5)
@@ -108,7 +108,12 @@ my_y_train=pd.read_csv('../my_y_train.csv')
 my_test=pd.read_csv('../my_test.csv')
 
 ## 使用xgboost 的数据集进行处理
-my_params=param_beyesian(my_y_train,my_x_train)
+# my_params=param_beyesian(my_y_train,my_x_train)
+my_params={'colsample_bytree': 0.5065780361806267, 'eta': 0.13318296074502095, 'max_depth': 5.153204249173053, 'min_child_weight': 25.00366551520674, 'reg_alpha': 3.5262429067739554, 'reg_lambda': 3.1400347657132164, 'subsample': 0.5924164568683057}
+# train_data, train_y, test, params
+print(my_x_train.shape)
+print(my_y_train.shape)
+print(my_test.shape)
 oof,ans=train_predict(my_x_train,my_y_train,my_test,my_params)
 
 

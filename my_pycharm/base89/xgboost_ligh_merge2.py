@@ -13,11 +13,11 @@ from sklearn.model_selection import RepeatedKFold
 
 predict1 = pd.read_csv('../baseline892.csv')
 predict1=np.array(predict1['isDefault'].values).reshape(-1,1)
-predict2 = pd.read_csv('../nn2.csv')
+predict2 = pd.read_csv('./merge_xgb1.csv')
 predict2=np.array(predict2['isDefault'].values).reshape(-1,1)
 oof1 = pd.read_csv('../new.csv', header=None, index_col=False)
 oof1=np.array(oof1)
-oof2 = pd.read_csv('../new.csv', header=None, index_col=False)
+oof2 = pd.read_csv('./new1.csv', header=None, index_col=False)
 oof2=np.array(oof2)
 y_train = pd.read_csv('../my_y_train.csv')
 y_train=np.array(y_train.values)
@@ -45,3 +45,6 @@ def stack_model(oof1, oof2, predictions_1, predictions_2):
     return oof, predictions
 oof, predictions = stack_model(oof1, oof2, predict1, predict2)
 print(predictions)
+my_ans1=pd.read_csv("../../train_dataset/submit_example.csv")
+my_ans1['isDefault']=np.array(predictions)
+my_ans1.to_csv('./ans1.csv',index=False)

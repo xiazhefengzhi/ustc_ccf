@@ -16,11 +16,13 @@ from sklearn.metrics import roc_auc_score, precision_recall_curve, roc_curve, av
 from sklearn.model_selection import KFold
 from lightgbm import LGBMClassifier
 import matplotlib.pyplot as plt
+from scipy  import  stats
 import seaborn as sns
 import gc
+import  warnings
 from sklearn.model_selection import StratifiedKFold
 from dateutil.relativedelta import relativedelta
-
+warnings.filterwarnings("ignore")
 train_data = pd.read_csv('../../train_dataset/train_public.csv')
 submit_example = pd.read_csv('../../train_dataset/submit_example.csv')
 test_public = pd.read_csv('../../train_dataset/test_public.csv')
@@ -31,6 +33,12 @@ pd.set_option('max_rows', 200)
 pd.set_option('float_format', lambda x: '%.3f' % x)
 
 
+###  对所有的数据画箱线图
+
+
+
+
+print("-"*50)
 def train_model(data_, test_, y_, folds_):
     oof_preds = np.zeros(data_.shape[0])
     sub_preds = np.zeros(test_.shape[0])
@@ -198,6 +206,31 @@ for col in Inte_add_cos:
 
 y = train_data['isDefault']
 folds = KFold(n_splits=5, shuffle=True, random_state=546789)
+
+# 画箱式图
+my_len=len(train_data.columns.tolist())
+
+train_cols = 6
+train_rows = len(train_data.columns)
+plt.figure(figsize=(4 * train_cols, 4 * train_rows))
+
+i = 0
+for col in train_data.columns:
+    i += 1
+    ax = plt.subplot(train_rows, train_cols, i)
+    try:
+        sns.distplot(train_data[col], fit=stats.norm)
+    except Exception as e:
+        print(e)
+    i += 1
+    ax = plt.subplot(train_rows, train_cols, i)
+    res = stats.probplot(train_data[col], plot=plt)
+plt.show()
+
+
+
+print('123')
+
 oof_preds, IntePre, importances = train_model(train_data, train_inteSame, y, folds)
 
 IntePre['isDef'] = train_inte['isDefault']
@@ -234,19 +267,15 @@ plt.legend()
 plt.show()
 train = data[data['isDefault'].notna()]
 test = data[data['isDefault'].isna()]
-# for col in ['sub_class', 'work_type']:
-#     del train[col]
-#     del test[col]111
-
-
 del data
 del train_data, test_public
 
 y = train['isDefault']
 folds = KFold(n_splits=5, shuffle=True, random_state=546789)
+
+
 oof_preds, test_preds, importances = train_model(train, test, y, folds)
 test_preds.rename({'loan_id': 'id'}, axis=1)[['id', 'isDefault']].to_csv('nn2.csv', index=False)
-import pandas as pd
 train_data = pd.read_csv('../../train_dataset/train_public.csv')
 test_data = pd.read_csv('../../train_dataset/test_public.csv')
 sub=pd.read_csv("../nn2.csv")
